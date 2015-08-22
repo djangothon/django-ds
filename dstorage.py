@@ -16,9 +16,12 @@ class DistributedStorage(Storage):
     def __init__(self):
         super(DistributedStorage, self).__init__()
 
-        if constants.MONGO_DB in STORAGES:
+        self.storages_dict = {}
+        if constants.S3_BOTO in STORAGES:
             try:
                 self.s3_storage = S3BotoStorage()
+                self.storages_dict.update({
+                        constants.S3_BOTO: self.s3_sotrage})
             except Exception, e:
                 raise e
         else:
@@ -26,51 +29,49 @@ class DistributedStorage(Storage):
 
         if constants.MONGO_DB in STORAGES:
             try:
-                self.mongo_db = GridFSStorage()
+                self.mongo_storage = GridFSStorage()
+                self.storages_dict.update({
+                        constants.MONGO_DB: self.mongo_storage})
             except Exception, e:
                 raise e
         else:
             self.mongo_db = None
 
-    def _save(self, name, content):
-        if self.s3_storage:
-            self.s3_storage._save(name, content)
+        self.storages = [self.storages_dict[storage]
+                         for storage in STORAGES]
 
-        if self.mongo_db:
-            self.mongo_db._save(name, content)
+    def _save(self, name, content):
+        for storage in self.storages:
+            storage._save(name, content)
 
         return name
 
+    def _open(name, mode='rb'):
+        for storage in self.storages:
+            if storage.exists(name):
+                return storage._open(name, mode="rb")
+        else:
+            raise IOError('File %s doesn\'t exists' % name)
+
     def exists(self, name):
-        if self.s3_storage:
-            exists = self.s3_storage.exists(name)
-            if exists:
-                return True
-
-        if self.mongo_db:
-            exists = self.mongo_db.exists(name)
-            if exists:
-                return True
-
-        return False
+        exists = [storage(name) for storage in self.storages]
+        return any(exists)
 
     def delete(self, name):
-        if self.s3_storage:
-            self.s3_storage.delete(name)
-        if self.mongo_db:
-            self.mongo_db.delete(name)
+        for storage in self.storages:
+            storage.delete(name)
 
     def listdir(self, name):
-        if self.s3_storage:
-            return self.s3_storage.listdir(name)
-        if self.mongo_db:
-            return self.mongo_db.listdir(name)
+        for storage in self.storages:
+            storage.listdir(name)
 
     def size(self, name):
-        if self.s3_storage:
-            return self.s3_storage.size(name)
-        if self.mongo_db:
-            return self.mongo_db.size(name)
+        size = 0
+        for storage in self.storages:
+            size = storage.size(name)
+
+        return size
 
     def url(self):
-        pass
+        for storage in storages:
+
