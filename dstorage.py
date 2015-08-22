@@ -11,6 +11,7 @@ from storages.backends.mongodb import GridFSStorage
 
 STORAGES = settings.DISTRIBUTED_STORAGES
 
+
 class DistributedStorage(Storage):
     def __init__(self):
         super(DistributedStorage, self).__init__()
@@ -33,7 +34,7 @@ class DistributedStorage(Storage):
 
     def _save(self, name, content):
         if self.s3_storage:
-           self.s3_storage._save(name, content)
+            self.s3_storage._save(name, content)
 
         if self.mongo_db:
             self.mongo_db._save(name, content)
@@ -52,3 +53,24 @@ class DistributedStorage(Storage):
                 return True
 
         return False
+
+    def delete(self, name):
+        if self.s3_storage:
+            self.s3_storage.delete(name)
+        if self.mongo_db:
+            self.mongo_db.delete(name)
+
+    def listdir(self, name):
+        if self.s3_storage:
+            return self.s3_storage.listdir(name)
+        if self.mongo_db:
+            return self.mongo_db.listdir(name)
+
+    def size(self, name):
+        if self.s3_storage:
+            return self.s3_storage.size(name)
+        if self.mongo_db:
+            return self.mongo_db.size(name)
+
+    def url(self):
+        pass
