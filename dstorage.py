@@ -1,6 +1,7 @@
 # storage and fetch logic goes here
 
 import constants
+from utils import retry
 
 from django.core.files.storage import Storage
 from django.conf import settings
@@ -33,10 +34,10 @@ class DistributedStorage(Storage):
 
     def _save(self, name, content):
         if self.s3_storage:
-           self.s3_storage._save(name, content)
+            retry(self.s3_storage, (name, content))
 
         if self.mongo_db:
-            self.mongo_db._save(name, content)
+            retry(self.mongo_db._save(name, content))
 
         return name
 
